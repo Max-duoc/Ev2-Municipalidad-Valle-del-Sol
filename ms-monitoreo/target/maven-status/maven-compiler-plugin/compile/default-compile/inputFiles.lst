@@ -1,0 +1,6 @@
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-monitoreo/src/main/java/cl/municipalidad/monitoreo/dto/FocoActivoDTO.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-monitoreo/src/main/java/cl/municipalidad/monitoreo/repository/FocoActivoRepository.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-monitoreo/src/main/java/cl/municipalidad/monitoreo/model/FocoActivo.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-monitoreo/src/main/java/cl/municipalidad/monitoreo/controller/MonitoreoController.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-monitoreo/src/main/java/cl/municipalidad/monitoreo/service/MonitoreoService.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-monitoreo/src/main/java/cl/municipalidad/monitoreo/MonitoreoApplication.java

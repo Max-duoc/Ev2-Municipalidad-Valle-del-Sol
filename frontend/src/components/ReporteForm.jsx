@@ -12,6 +12,7 @@ export default function ReporteForm({ onReporteCreado }) {
     latitud: '',
     longitud: '',
     mediaUrl: '',
+    intensidad: 'MEDIA',
     ciudadanoId: 'ciudadano-web-' + Date.now(),
   })
   const [loading, setLoading] = useState(false)
@@ -28,6 +29,13 @@ export default function ReporteForm({ onReporteCreado }) {
       return
     }
     setGpsLoading(true)
+
+    const opcionesGps = {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setForm((f) => ({
@@ -37,10 +45,15 @@ export default function ReporteForm({ onReporteCreado }) {
         }))
         setGpsLoading(false)
       },
-      () => {
-        setMensaje({ tipo: 'error', texto: 'No se pudo obtener la ubicación.' })
+      (error) => {
+        console.warn(`Error de geolocalización (${error.code}): ${error.message}`)
+        setMensaje({
+          tipo: 'error',
+          texto: 'No se pudo obtener la ubicación con alta precisión. Asegúrate de dar permisos de GPS al navegador o ingrésala manualmente.'
+        })
         setGpsLoading(false)
-      }
+      },
+      opcionesGps
     )
   }
 
@@ -88,6 +101,27 @@ export default function ReporteForm({ onReporteCreado }) {
               <option value="FORESTAL">🌲 Incendio Forestal</option>
               <option value="URBANO">🏙️ Incendio Urbano</option>
               <option value="SIMULACRO">🔔 Simulacro</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="intensidad">Intensidad Sugerida</label>
+            <select id="intensidad" name="intensidad" value={form.intensidad} onChange={handleChange}>
+              <option value="BAJA">🟡 Baja</option>
+              <option value="MEDIA">🟠 Media</option>
+              <option value="ALTA">🔴 Alta</option>
+              <option value="CRITICA">🟣 Crítica</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="sector">Sector de la Emergencia</label>
+            <select id="sector" name="sector" value={form.sector} onChange={handleChange}>
+              <option value="Valle Centro">📍 Valle Centro</option>
+              <option value="Valle Norte">📍 Valle Norte</option>
+              <option value="Valle Sur">📍 Valle Sur</option>
+              <option value="Valle Este">📍 Valle Este</option>
+              <option value="Valle Oeste">📍 Valle Oeste</option>
             </select>
           </div>
 

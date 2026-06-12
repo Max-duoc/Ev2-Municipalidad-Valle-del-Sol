@@ -1,0 +1,9 @@
+cl/municipalidad/reportes/ReportesApplication.class
+cl/municipalidad/reportes/controller/ReporteController.class
+cl/municipalidad/reportes/service/ReporteService.class
+cl/municipalidad/reportes/repository/ReporteRepository.class
+cl/municipalidad/reportes/model/TipoReporte.class
+cl/municipalidad/reportes/model/Reporte.class
+cl/municipalidad/reportes/dto/ReporteDTO.class
+cl/municipalidad/reportes/factory/ReporteFactory$1.class
+cl/municipalidad/reportes/factory/ReporteFactory.class

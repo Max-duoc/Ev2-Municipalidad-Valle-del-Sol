@@ -20,131 +20,165 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class BffController {
 
-    private final WebClient reportesClient;
-    private final WebClient monitoreoClient;
+        private final WebClient reportesClient;
+        private final WebClient monitoreoClient;
 
-    public BffController(@Qualifier("reportesClient") WebClient reportesClient,
-                         @Qualifier("monitoreoClient") WebClient monitoreoClient) {
-        this.reportesClient = reportesClient;
-        this.monitoreoClient = monitoreoClient;
-    }
+        public BffController(@Qualifier("reportesClient") WebClient reportesClient,
+                        @Qualifier("monitoreoClient") WebClient monitoreoClient) {
+                this.reportesClient = reportesClient;
+                this.monitoreoClient = monitoreoClient;
+        }
 
-    // ──────────────────────────────────────────────
-    // REPORTES (sin circuit breaker, servicio crítico)
-    // ──────────────────────────────────────────────
+        // ──────────────────────────────────────────────
+        // REPORTES (sin circuit breaker, servicio crítico)
+        // ──────────────────────────────────────────────
 
-    @PostMapping("/reportes")
-    public ResponseEntity<?> crearReporte(@RequestBody Map<String, Object> body) {
-        Object resultado = reportesClient.post()
-                .uri("/api/reportes")
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(Object.class)
-                .block();
-        return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
-    }
+        @PostMapping("/reportes")
+        public ResponseEntity<?> crearReporte(@RequestBody Map<String, Object> body) {
+                // 1. Crear el reporte en ms-reportes
+                Object resultado = reportesClient.post()
+                                .uri("/api/reportes")
+                                .bodyValue(body)
+                                .retrieve()
+                                .bodyToMono(Object.class)
+                                .block();
 
-    @GetMapping("/reportes")
-    public ResponseEntity<?> obtenerReportes() {
-        Object resultado = reportesClient.get()
-                .uri("/api/reportes")
-                .retrieve()
-                .bodyToMono(Object.class)
-                .block();
-        return ResponseEntity.ok(resultado);
-    }
+                // 2. Orquestar el registro automático en ms-monitoreo
+                if (resultado != null) {
+                        try {
+                                Double latitud = body.get("latitud") != null
+                                                ? Double.valueOf(body.get("latitud").toString())
+                                                : 0.0;
+                                Double longitud = body.get("longitud") != null
+                                                ? Double.valueOf(body.get("longitud").toString())
+                                                : 0.0;
+                                String intensidad = body.get("intensidad") != null ? body.get("intensidad").toString()
+                                                : "MEDIA";
+                                String sector = body.get("sector") != null ? body.get("sector").toString()
+                                                : "Valle Central";
 
-    @GetMapping("/reportes/{id}")
-    public ResponseEntity<?> obtenerReportePorId(@PathVariable Long id) {
-        Object resultado = reportesClient.get()
-                .uri("/api/reportes/{id}", id)
-                .retrieve()
-                .bodyToMono(Object.class)
-                .block();
-        return ResponseEntity.ok(resultado);
-    }
+                                Map<String, Object> focoBody = Map.of(
+                                                "latitud", latitud,
+                                                "longitud", longitud,
+                                                "intensidad", intensidad,
+                                                "sector", sector,
+                                                "brigadaAsignada", "Sin asignar");
 
-    // ──────────────────────────────────────────────
-    // MONITOREO (CON Circuit Breaker)
-    // Si ms-monitoreo falla, se activa el fallback y
-    // el resto de la plataforma (reportes) sigue operativo.
-    // ──────────────────────────────────────────────
+                                monitoreoClient.post()
+                                                .uri("/api/monitoreo/focos")
+                                                .bodyValue(focoBody)
+                                                .retrieve()
+                                                .bodyToMono(Object.class)
+                                                .block();
+                        } catch (Exception e) {
+                                // Falla tolerable: Se registra el error pero no bloquea la respuesta al cliente
+                                System.err.println("Error al registrar foco automático en ms-monitoreo: "
+                                                + e.getMessage());
+                        }
+                }
+                return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
+        }
 
-    @GetMapping("/monitoreo/focos")
-    @CircuitBreaker(name = "monitoreo-cb", fallbackMethod = "fallbackFocosActivos")
-    public ResponseEntity<?> obtenerFocosActivos() {
-        Object resultado = monitoreoClient.get()
-                .uri("/api/monitoreo/focos/activos")
-                .retrieve()
-                .bodyToMono(Object.class)
-                .block();
-        return ResponseEntity.ok(resultado);
-    }
+        @GetMapping("/reportes")
+        public ResponseEntity<?> obtenerReportes() {
+                Object resultado = reportesClient.get()
+                                .uri("/api/reportes")
+                                .retrieve()
+                                .bodyToMono(Object.class)
+                                .block();
+                return ResponseEntity.ok(resultado);
+        }
 
-    @PostMapping("/monitoreo/focos")
-    @CircuitBreaker(name = "monitoreo-cb", fallbackMethod = "fallbackRegistrarFoco")
-    public ResponseEntity<?> registrarFoco(@RequestBody Map<String, Object> body) {
-        Object resultado = monitoreoClient.post()
-                .uri("/api/monitoreo/focos")
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(Object.class)
-                .block();
-        return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
-    }
+        @GetMapping("/reportes/{id}")
+        public ResponseEntity<?> obtenerReportePorId(@PathVariable Long id) {
+                Object resultado = reportesClient.get()
+                                .uri("/api/reportes/{id}", id)
+                                .retrieve()
+                                .bodyToMono(Object.class)
+                                .block();
+                return ResponseEntity.ok(resultado);
+        }
 
-    @PatchMapping("/monitoreo/focos/{id}")
-    @CircuitBreaker(name = "monitoreo-cb", fallbackMethod = "fallbackActualizarFoco")
-    public ResponseEntity<?> actualizarFoco(@PathVariable Long id,
-                                             @RequestBody Map<String, Object> body) {
-        Object resultado = monitoreoClient.patch()
-                .uri("/api/monitoreo/focos/{id}", id)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(Object.class)
-                .block();
-        return ResponseEntity.ok(resultado);
-    }
+        // ──────────────────────────────────────────────
+        // MONITOREO (CON Circuit Breaker)
+        // Si ms-monitoreo falla, se activa el fallback y
+        // el resto de la plataforma (reportes) sigue operativo.
+        // ──────────────────────────────────────────────
 
-    // ──────────────────────────────────────────────
-    // FALLBACK METHODS (Circuit Breaker abierto)
-    // ──────────────────────────────────────────────
+        @GetMapping("/monitoreo/focos")
+        @CircuitBreaker(name = "monitoreo-cb", fallbackMethod = "fallbackFocosActivos")
+        public ResponseEntity<?> obtenerFocosActivos() {
+                Object resultado = monitoreoClient.get()
+                                .uri("/api/monitoreo/focos/activos")
+                                .retrieve()
+                                .bodyToMono(Object.class)
+                                .block();
+                return ResponseEntity.ok(resultado);
+        }
 
-    public ResponseEntity<?> fallbackFocosActivos(Exception ex) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "status", "CIRCUIT_OPEN",
-                        "message", "Servicio de monitoreo temporalmente no disponible. El sistema de reportes sigue operativo.",
-                        "focos", List.of()
-                ));
-    }
+        @PostMapping("/monitoreo/focos")
+        @CircuitBreaker(name = "monitoreo-cb", fallbackMethod = "fallbackRegistrarFoco")
+        public ResponseEntity<?> registrarFoco(@RequestBody Map<String, Object> body) {
+                Object resultado = monitoreoClient.post()
+                                .uri("/api/monitoreo/focos")
+                                .bodyValue(body)
+                                .retrieve()
+                                .bodyToMono(Object.class)
+                                .block();
+                return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
+        }
 
-    public ResponseEntity<?> fallbackRegistrarFoco(Map<String, Object> body, Exception ex) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "status", "CIRCUIT_OPEN",
-                        "message", "No se pudo registrar el foco. Intente nuevamente en unos momentos."
-                ));
-    }
+        @PatchMapping("/monitoreo/focos/{id}")
+        @CircuitBreaker(name = "monitoreo-cb", fallbackMethod = "fallbackActualizarFoco")
+        public ResponseEntity<?> actualizarFoco(@PathVariable Long id,
+                        @RequestBody Map<String, Object> body) {
+                Object resultado = monitoreoClient.patch()
+                                .uri("/api/monitoreo/focos/{id}", id)
+                                .bodyValue(body)
+                                .retrieve()
+                                .bodyToMono(Object.class)
+                                .block();
+                return ResponseEntity.ok(resultado);
+        }
 
-    public ResponseEntity<?> fallbackActualizarFoco(Long id, Map<String, Object> body, Exception ex) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "status", "CIRCUIT_OPEN",
-                        "message", "No se pudo actualizar el foco ID " + id + ". Servicio no disponible."
-                ));
-    }
+        // ──────────────────────────────────────────────
+        // FALLBACK METHODS (Circuit Breaker abierto)
+        // ──────────────────────────────────────────────
 
-    // ──────────────────────────────────────────────
-    // HEALTH CHECK
-    // ──────────────────────────────────────────────
+        public ResponseEntity<?> fallbackFocosActivos(Exception ex) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .body(Map.of(
+                                                "status", "CIRCUIT_OPEN",
+                                                "message",
+                                                "Servicio de monitoreo temporalmente no disponible. El sistema de reportes sigue operativo.",
+                                                "focos", List.of()));
+        }
 
-    @GetMapping("/health")
-    public ResponseEntity<?> health() {
-        return ResponseEntity.ok(Map.of(
-                "status", "UP",
-                "service", "bff",
-                "version", "1.0.0"
-        ));
-    }
+        public ResponseEntity<?> fallbackRegistrarFoco(Map<String, Object> body, Exception ex) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .body(Map.of(
+                                                "status", "CIRCUIT_OPEN",
+                                                "message",
+                                                "No se pudo registrar el foco. Intente nuevamente en unos momentos."));
+        }
+
+        public ResponseEntity<?> fallbackActualizarFoco(Long id, Map<String, Object> body, Exception ex) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .body(Map.of(
+                                                "status", "CIRCUIT_OPEN",
+                                                "message", "No se pudo actualizar el foco ID " + id
+                                                                + ". Servicio no disponible."));
+        }
+
+        // ──────────────────────────────────────────────
+        // HEALTH CHECK
+        // ──────────────────────────────────────────────
+
+        @GetMapping("/health")
+        public ResponseEntity<?> health() {
+                return ResponseEntity.ok(Map.of(
+                                "status", "UP",
+                                "service", "bff",
+                                "version", "1.0.0"));
+        }
 }

@@ -1,0 +1,8 @@
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/ReportesApplication.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/service/ReporteService.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/dto/ReporteDTO.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/controller/ReporteController.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/model/Reporte.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/model/TipoReporte.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/factory/ReporteFactory.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/ms-reportes/src/main/java/cl/municipalidad/reportes/repository/ReporteRepository.java

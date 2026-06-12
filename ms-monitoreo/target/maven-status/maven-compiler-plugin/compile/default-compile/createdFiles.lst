@@ -1,0 +1,6 @@
+cl/municipalidad/monitoreo/controller/MonitoreoController.class
+cl/municipalidad/monitoreo/dto/FocoActivoDTO.class
+cl/municipalidad/monitoreo/service/MonitoreoService.class
+cl/municipalidad/monitoreo/repository/FocoActivoRepository.class
+cl/municipalidad/monitoreo/MonitoreoApplication.class
+cl/municipalidad/monitoreo/model/FocoActivo.class

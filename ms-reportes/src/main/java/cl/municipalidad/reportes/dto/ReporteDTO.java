@@ -6,7 +6,9 @@ public class ReporteDTO {
     private Double latitud;
     private Double longitud;
     private String mediaUrl;
+    private String intensidad;
     private String ciudadanoId;
+    private String ciudadanoNombre;
 
     public ReporteDTO() {}
 
@@ -25,6 +27,12 @@ public class ReporteDTO {
     public String getMediaUrl() { return mediaUrl; }
     public void setMediaUrl(String mediaUrl) { this.mediaUrl = mediaUrl; }
 
+    public String getIntensidad() { return intensidad; }
+    public void setIntensidad(String intensidad) { this.intensidad = intensidad; }
+
     public String getCiudadanoId() { return ciudadanoId; }
     public void setCiudadanoId(String ciudadanoId) { this.ciudadanoId = ciudadanoId; }
+
+    public String getCiudadanoNombre() { return ciudadanoNombre; }
+    public void setCiudadanoNombre(String ciudadanoNombre) { this.ciudadanoNombre = ciudadanoNombre; }
 }

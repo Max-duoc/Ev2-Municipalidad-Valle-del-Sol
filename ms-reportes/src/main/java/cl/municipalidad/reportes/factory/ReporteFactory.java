@@ -30,7 +30,9 @@ public class ReporteFactory {
                 dto.getLatitud(),
                 dto.getLongitud(),
                 dto.getMediaUrl(),
-                dto.getCiudadanoId()
+                dto.getIntensidad(),
+                dto.getCiudadanoId(),
+                dto.getCiudadanoNombre()
         );
         r.setEstado("ACTIVO");
         return r;
@@ -43,7 +45,9 @@ public class ReporteFactory {
                 dto.getLatitud(),
                 dto.getLongitud(),
                 dto.getMediaUrl(),
-                dto.getCiudadanoId()
+                dto.getIntensidad(),
+                dto.getCiudadanoId(),
+                dto.getCiudadanoNombre()
         );
     }
 
@@ -54,7 +58,9 @@ public class ReporteFactory {
                 dto.getLatitud(),
                 dto.getLongitud(),
                 dto.getMediaUrl(),
-                dto.getCiudadanoId()
+                dto.getIntensidad(),
+                dto.getCiudadanoId(),
+                dto.getCiudadanoNombre()
         );
         r.setEstado("SIMULACRO");
         return r;

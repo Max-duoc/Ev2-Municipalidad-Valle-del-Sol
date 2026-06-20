@@ -1,3 +1,5 @@
 /home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/bff/src/main/java/cl/municipalidad/bff/controller/BffController.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/bff/src/main/java/cl/municipalidad/bff/controller/ApiExceptionHandler.java
+/home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/bff/src/main/java/cl/municipalidad/bff/controller/AuthController.java
 /home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/bff/src/main/java/cl/municipalidad/bff/config/WebClientConfig.java
 /home/max/Proyectos/Ev2-Municipalidad-Valle-del-Sol/bff/src/main/java/cl/municipalidad/bff/BffApplication.java

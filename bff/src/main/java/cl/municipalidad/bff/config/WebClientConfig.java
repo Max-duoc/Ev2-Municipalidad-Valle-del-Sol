@@ -14,6 +14,9 @@ public class WebClientConfig {
     @Value("${services.monitoreo.url}")
     private String monitoreoUrl;
 
+    @Value("${services.usuarios.url}")
+    private String usuariosUrl;
+
     @Bean("reportesClient")
     public WebClient reportesClient() {
         return WebClient.builder()
@@ -25,6 +28,13 @@ public class WebClientConfig {
     public WebClient monitoreoClient() {
         return WebClient.builder()
                 .baseUrl(monitoreoUrl)
+                .build();
+    }
+
+    @Bean("usuariosClient")
+    public WebClient usuariosClient() {
+        return WebClient.builder()
+                .baseUrl(usuariosUrl)
                 .build();
     }
 }

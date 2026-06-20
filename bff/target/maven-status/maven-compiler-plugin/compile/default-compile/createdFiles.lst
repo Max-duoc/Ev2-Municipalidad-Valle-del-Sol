@@ -1,3 +1,5 @@
 cl/municipalidad/bff/controller/BffController.class
 cl/municipalidad/bff/BffApplication.class
 cl/municipalidad/bff/config/WebClientConfig.class
+cl/municipalidad/bff/controller/ApiExceptionHandler.class
+cl/municipalidad/bff/controller/AuthController.class

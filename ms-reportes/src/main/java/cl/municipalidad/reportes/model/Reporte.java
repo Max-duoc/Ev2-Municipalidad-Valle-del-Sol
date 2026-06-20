@@ -28,6 +28,9 @@ public class Reporte {
     private String mediaUrl;
 
     @Column(nullable = false)
+    private String intensidad;
+
+    @Column(nullable = false)
     private String estado;
 
     @Column(name = "fecha_creacion", nullable = false)
@@ -36,16 +39,31 @@ public class Reporte {
     @Column(name = "ciudadano_id")
     private String ciudadanoId;
 
+    @Column(name = "ciudadano_nombre")
+    private String ciudadanoNombre;
+
     public Reporte() {}
 
     public Reporte(TipoReporte tipo, String descripcion, Double latitud, Double longitud,
                    String mediaUrl, String ciudadanoId) {
+        this(tipo, descripcion, latitud, longitud, mediaUrl, "MEDIA", ciudadanoId, null);
+    }
+
+    public Reporte(TipoReporte tipo, String descripcion, Double latitud, Double longitud,
+                   String mediaUrl, String ciudadanoId, String ciudadanoNombre) {
+        this(tipo, descripcion, latitud, longitud, mediaUrl, "MEDIA", ciudadanoId, ciudadanoNombre);
+    }
+
+    public Reporte(TipoReporte tipo, String descripcion, Double latitud, Double longitud,
+                   String mediaUrl, String intensidad, String ciudadanoId, String ciudadanoNombre) {
         this.tipo = tipo;
         this.descripcion = descripcion;
         this.latitud = latitud;
         this.longitud = longitud;
         this.mediaUrl = mediaUrl;
+        this.intensidad = intensidad == null || intensidad.isBlank() ? "MEDIA" : intensidad;
         this.ciudadanoId = ciudadanoId;
+        this.ciudadanoNombre = ciudadanoNombre;
         this.estado = "PENDIENTE";
         this.fechaCreacion = LocalDateTime.now();
     }
@@ -69,6 +87,9 @@ public class Reporte {
     public String getMediaUrl() { return mediaUrl; }
     public void setMediaUrl(String mediaUrl) { this.mediaUrl = mediaUrl; }
 
+    public String getIntensidad() { return intensidad; }
+    public void setIntensidad(String intensidad) { this.intensidad = intensidad; }
+
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }
 
@@ -77,4 +98,7 @@ public class Reporte {
 
     public String getCiudadanoId() { return ciudadanoId; }
     public void setCiudadanoId(String ciudadanoId) { this.ciudadanoId = ciudadanoId; }
+
+    public String getCiudadanoNombre() { return ciudadanoNombre; }
+    public void setCiudadanoNombre(String ciudadanoNombre) { this.ciudadanoNombre = ciudadanoNombre; }
 }

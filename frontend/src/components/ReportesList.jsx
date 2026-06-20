@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
 import { reportesService } from '../services/api'
 
-export default function ReportesList({ refresh }) {
+export default function ReportesList({ refresh, usuario }) {
   const [reportes, setReportes] = useState([])
   const [loading, setLoading] = useState(true)
 
   const cargar = async () => {
     try {
       const res = await reportesService.obtenerTodos()
-      setReportes(Array.isArray(res.data) ? res.data : [])
+      const todos = Array.isArray(res.data) ? res.data : []
+      const reportesUsuario = usuario?.id
+        ? todos.filter((reporte) => String(reporte.ciudadanoId) === String(usuario.id))
+        : []
+      setReportes(reportesUsuario)
     } catch {
       setReportes([])
     } finally {
@@ -16,7 +20,7 @@ export default function ReportesList({ refresh }) {
     }
   }
 
-  useEffect(() => { cargar() }, [refresh])
+  useEffect(() => { cargar() }, [refresh, usuario?.id])
 
   if (loading) return <div className="loading">Cargando reportes...</div>
 
@@ -25,7 +29,7 @@ export default function ReportesList({ refresh }) {
       <h2>📋 Reportes Registrados ({reportes.length})</h2>
       {reportes.length === 0 ? (
         <p style={{ color: '#888', textAlign: 'center', padding: '1rem' }}>
-          No hay reportes aún. ¡Sé el primero en reportar!
+          No tienes reportes registrados en esta cuenta.
         </p>
       ) : (
         <div className="reportes-list">

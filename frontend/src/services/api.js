@@ -8,6 +8,22 @@ const api = axios.create({
   timeout: 10000,
 })
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// ── Módulo de Autenticación ─────────────────────
+export const authService = {
+  login: (datos) => api.post('/auth/login', datos),
+  registrar: (datos) => api.post('/auth/register', datos),
+  obtenerSesion: () => api.get('/auth/me'),
+  logout: () => api.post('/auth/logout'),
+}
+
 // ── Módulo de Reportes ──────────────────────────
 export const reportesService = {
   crear: (datos) => api.post('/reportes', datos),

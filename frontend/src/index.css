@@ -55,6 +55,42 @@ body {
   gap: 1rem;
 }
 
+.notification-button {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  padding: 0.5rem 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.notification-button:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.notification-button.enabled {
+  background: #198754;
+  border-color: #198754;
+}
+
+.notification-button strong {
+  min-width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e94560;
+  color: white;
+  font-size: 0.72rem;
+}
+
 .session-user {
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
@@ -227,6 +263,13 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .btn-secondary:hover { background: #e0e0e0; }
 
+.btn-danger {
+  background: #b42318;
+  color: white;
+}
+.btn-danger:hover { background: #912018; transform: translateY(-1px); }
+.btn-danger:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+
 /* Alert */
 .alert {
   padding: 0.8rem 1rem;
@@ -253,6 +296,13 @@ textarea { resize: vertical; min-height: 80px; }
 .badge-forestal { background: #8d5524; color: white; }
 .badge-urbano { background: #1976d2; color: white; }
 .badge-simulacro { background: #7b1fa2; color: white; }
+.badge-admin { background: #1a1a2e; color: white; }
+.badge-brigada { background: #198754; color: white; }
+.badge-ciudadano { background: #1976d2; color: white; }
+.badge-en_revision { background: #0f766e; color: white; }
+.badge-atendido { background: #198754; color: white; }
+.badge-cerrado { background: #344054; color: white; }
+.badge-intensidad { background: #fff3cd; color: #856404; }
 
 /* Map */
 .map-container {
@@ -372,14 +422,12 @@ textarea { resize: vertical; min-height: 80px; }
   flex: 0 0 auto;
 }
 
-.report-marker-wrapper,
-.report-bubble-wrapper {
+.report-marker-wrapper {
   background: transparent;
   border: 0;
 }
 
-.report-marker,
-.report-bubble {
+.report-marker {
   display: grid;
   place-items: center;
   width: 38px;
@@ -391,12 +439,6 @@ textarea { resize: vertical; min-height: 80px; }
   font-size: 0.82rem;
   font-weight: 800;
   box-shadow: 0 8px 18px rgba(0,0,0,0.28);
-}
-
-.report-bubble {
-  width: 34px;
-  height: 34px;
-  font-size: 0.76rem;
 }
 
 .report-detail-panel {
@@ -428,6 +470,12 @@ textarea { resize: vertical; min-height: 80px; }
   font-size: 1.1rem;
 }
 
+.report-detail-header p {
+  margin-top: 0.25rem;
+  color: #667085;
+  font-size: 0.82rem;
+}
+
 .detail-close {
   border: 0;
   border-radius: 8px;
@@ -443,6 +491,32 @@ textarea { resize: vertical; min-height: 80px; }
   gap: 0.25rem;
   padding: 0.75rem 0;
   border-top: 1px solid #edf0f4;
+}
+
+.detail-report-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.detail-report-card {
+  padding: 0.85rem;
+  border: 1px solid #e8ebf0;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.detail-report-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.detail-report-title strong {
+  min-width: 0;
+  color: #1a1a2e;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
 }
 
 .detail-row strong {
@@ -467,11 +541,32 @@ textarea { resize: vertical; min-height: 80px; }
 }
 
 .detail-static-map {
+  position: relative;
   height: 180px;
   margin-top: 0.75rem;
   overflow: hidden;
   border: 1px solid #dde3ea;
   border-radius: 8px;
+  cursor: pointer;
+  background: #eef2f6;
+}
+
+.detail-static-map:focus {
+  outline: 3px solid rgba(233, 69, 96, 0.28);
+  outline-offset: 2px;
+}
+
+.detail-map-hint {
+  position: absolute;
+  left: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 500;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(26, 26, 46, 0.9);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 /* Table */
@@ -518,6 +613,98 @@ textarea { resize: vertical; min-height: 80px; }
   font-size: 0.8rem;
   color: #666;
   margin-top: 0.2rem;
+}
+
+/* Admin */
+.admin-layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.admin-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-reporte-item {
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.admin-report-controls {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: end;
+  min-width: 330px;
+}
+
+.admin-badges,
+.admin-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.admin-inline-actions .btn {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.users-table {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border: 1.5px solid #edf0f4;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.user-row div {
+  min-width: 0;
+  display: grid;
+  gap: 0.22rem;
+}
+
+.user-row strong {
+  color: #1a1a2e;
+  font-size: 0.95rem;
+}
+
+.user-row span {
+  overflow-wrap: anywhere;
+}
+
+.user-row div span {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.foco-row select {
+  width: min(260px, 100%);
+}
+
+.empty-state {
+  color: #888;
+  text-align: center;
+  padding: 1rem;
 }
 
 /* Loading */
@@ -783,6 +970,10 @@ textarea { resize: vertical; min-height: 80px; }
   .nav-actions {
     width: auto;
   }
+  .notification-button {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.76rem;
+  }
   .nav-tabs {
     position: fixed;
     left: 0.75rem;
@@ -790,7 +981,7 @@ textarea { resize: vertical; min-height: 80px; }
     bottom: 0.75rem;
     z-index: 1000;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
     gap: 0.35rem;
     padding: 0.45rem;
     border: 1px solid rgba(255,255,255,0.14);
@@ -887,6 +1078,18 @@ textarea { resize: vertical; min-height: 80px; }
   .auth-card {
     max-width: none;
     padding: 1rem;
+  }
+  .admin-reporte-item,
+  .user-row {
+    flex-direction: column;
+  }
+  .admin-report-controls {
+    min-width: 0;
+    justify-items: stretch;
+  }
+  .admin-badges,
+  .admin-inline-actions {
+    justify-content: flex-start;
   }
 }
 

@@ -1,1 +1,6 @@
+cl/municipalidad/bff/controller/BffControllerWebClientTest.class
+cl/municipalidad/bff/config/WebClientConfigTest.class
+cl/municipalidad/bff/controller/ApiExceptionHandlerTest.class
 cl/municipalidad/bff/BffControllerTest.class
+cl/municipalidad/bff/controller/AuthControllerTest.class
+cl/municipalidad/bff/BffApplicationTest.class

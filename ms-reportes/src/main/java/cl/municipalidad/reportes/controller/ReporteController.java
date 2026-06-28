@@ -2,10 +2,15 @@ package cl.municipalidad.reportes.controller;
 
 import cl.municipalidad.reportes.dto.ReporteDTO;
 import cl.municipalidad.reportes.model.Reporte;
+import cl.municipalidad.reportes.service.MediaStorageService;
 import cl.municipalidad.reportes.service.ReporteService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -16,15 +21,32 @@ import java.util.Map;
 public class ReporteController {
 
     private final ReporteService reporteService;
+    private final MediaStorageService mediaStorageService;
 
-    public ReporteController(ReporteService reporteService) {
+    public ReporteController(ReporteService reporteService, MediaStorageService mediaStorageService) {
         this.reporteService = reporteService;
+        this.mediaStorageService = mediaStorageService;
     }
 
     @PostMapping
     public ResponseEntity<Reporte> crear(@RequestBody ReporteDTO dto) {
         Reporte reporte = reporteService.crearReporte(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(reporte);
+    }
+
+    @PostMapping(value = "/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> subirMedia(@RequestPart("archivo") MultipartFile archivo) {
+        String nombre = mediaStorageService.guardar(archivo);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("mediaUrl", "/bff/reportes/media/" + nombre));
+    }
+
+    @GetMapping("/media/{nombre}")
+    public ResponseEntity<Resource> obtenerMedia(@PathVariable String nombre) {
+        Resource resource = mediaStorageService.cargar(nombre);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 
     @GetMapping

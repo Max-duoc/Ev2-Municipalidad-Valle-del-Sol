@@ -1,0 +1,1398 @@
+openapi: 3.0.3
+info:
+  title: API REST - Municipalidad Valle del Sol
+  version: 1.0.0
+  description: |
+    Especificacion OpenAPI de la plataforma de gestion de emergencias.
+
+    Incluye la API publica expuesta por el BFF y los endpoints internos de los
+    microservicios de usuarios, reportes y monitoreo.
+servers:
+  - url: http://localhost:8080
+    description: BFF local
+  - url: http://localhost:8083
+    description: ms-usuarios local
+  - url: http://localhost:8081
+    description: ms-reportes local
+  - url: http://localhost:8082
+    description: ms-monitoreo local
+
+tags:
+  - name: BFF - Autenticacion
+    description: Endpoints publicos de autenticacion expuestos por el BFF.
+  - name: BFF - Reportes
+    description: Endpoints de reportes expuestos al frontend.
+  - name: BFF - Monitoreo
+    description: Endpoints de monitoreo expuestos al frontend.
+  - name: BFF - Health
+    description: Verificacion de estado del BFF.
+  - name: ms-usuarios
+    description: API interna del microservicio de usuarios.
+  - name: ms-reportes
+    description: API interna del microservicio de reportes.
+  - name: ms-monitoreo
+    description: API interna del microservicio de monitoreo.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /bff/health:
+    get:
+      tags: [BFF - Health]
+      summary: Health check del BFF
+      security: []
+      responses:
+        "200":
+          description: Servicio operativo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: UP
+                service: bff
+                version: 1.0.0
+
+  /bff/auth/register:
+    post:
+      tags: [BFF - Autenticacion]
+      summary: Registrar ciudadano
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              nombre: Ana Soto
+              email: ana@test.cl
+              password: secreto1
+      responses:
+        "201":
+          description: Usuario registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+              example:
+                token: 8e9e0c67-71e8-47df-9a22-37fa4eb2fd68
+                usuario:
+                  id: 2
+                  nombre: Ana Soto
+                  email: ana@test.cl
+                  rol: CIUDADANO
+                  creadoEn: "2026-06-27T12:00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /bff/auth/login:
+    post:
+      tags: [BFF - Autenticacion]
+      summary: Iniciar sesion
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: admin@valledelsol.cl
+              password: admin123
+      responses:
+        "200":
+          description: Login correcto.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+              example:
+                token: 2af4aeb0-724e-42d9-a93c-7df3a9389a42
+                usuario:
+                  id: 1
+                  nombre: Administrador General
+                  email: admin@valledelsol.cl
+                  rol: ADMIN
+                  creadoEn: "2026-06-27T10:00:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /bff/auth/me:
+    get:
+      tags: [BFF - Autenticacion]
+      summary: Obtener sesion actual
+      responses:
+        "200":
+          description: Sesion valida.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usuario:
+                    $ref: "#/components/schemas/Usuario"
+              example:
+                usuario:
+                  id: 1
+                  nombre: Administrador General
+                  email: admin@valledelsol.cl
+                  rol: ADMIN
+                  creadoEn: "2026-06-27T10:00:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /bff/auth/logout:
+    post:
+      tags: [BFF - Autenticacion]
+      summary: Cerrar sesion
+      responses:
+        "204":
+          description: Sesion cerrada.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /bff/auth/usuarios:
+    get:
+      tags: [BFF - Autenticacion]
+      summary: Listar usuarios
+      description: Requiere token de usuario con rol ADMIN.
+      responses:
+        "200":
+          description: Lista de usuarios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Usuario"
+              example:
+                - id: 1
+                  nombre: Administrador General
+                  email: admin@valledelsol.cl
+                  rol: ADMIN
+                  creadoEn: "2026-06-27T10:00:00"
+                - id: 2
+                  nombre: Brigada Norte
+                  email: brigada@test.cl
+                  rol: BRIGADA
+                  creadoEn: "2026-06-27T11:00:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [BFF - Autenticacion]
+      summary: Crear usuario administrativo
+      description: Crea usuarios con rol ADMIN o BRIGADA. Requiere token ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserCreateRequest"
+            example:
+              nombre: Brigada Norte
+              email: brigada@test.cl
+              password: brigada1
+              rol: BRIGADA
+      responses:
+        "201":
+          description: Usuario administrativo creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+              example:
+                id: 3
+                nombre: Brigada Norte
+                email: brigada@test.cl
+                rol: BRIGADA
+                creadoEn: "2026-06-27T13:00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /bff/auth/notificaciones:
+    get:
+      tags: [BFF - Autenticacion]
+      summary: Listar notificaciones pendientes
+      responses:
+        "200":
+          description: Notificaciones pendientes del usuario autenticado.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notificacion"
+              example:
+                - id: 10
+                  titulo: Nuevo reporte de emergencia
+                  mensaje: Se registro un reporte FORESTAL con intensidad ALTA.
+                  url: /
+                  creadaEn: "2026-06-27T13:30:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /bff/auth/notificaciones/{id}/leida:
+    patch:
+      tags: [BFF - Autenticacion]
+      summary: Marcar notificacion como leida
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Notificacion marcada como leida.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /bff/reportes:
+    post:
+      tags: [BFF - Reportes]
+      summary: Crear reporte
+      description: Crea el reporte en ms-reportes y registra un foco automatico en ms-monitoreo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReporteCreateRequest"
+            example:
+              tipo: FORESTAL
+              descripcion: Humo visible en quebrada
+              latitud: -33.456789
+              longitud: -70.654321
+              mediaUrl: /bff/reportes/media/evidencia.jpg
+              intensidad: ALTA
+              sector: Valle Norte
+              ciudadanoId: "2"
+              ciudadanoNombre: Ana Soto
+      responses:
+        "201":
+          description: Reporte creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reporte"
+              example:
+                id: 21
+                tipo: FORESTAL
+                descripcion: "[FORESTAL] Humo visible en quebrada"
+                latitud: -33.456789
+                longitud: -70.654321
+                mediaUrl: /bff/reportes/media/evidencia.jpg
+                intensidad: ALTA
+                estado: ACTIVO
+                fechaCreacion: "2026-06-27T14:00:00"
+                ciudadanoId: "2"
+                ciudadanoNombre: Ana Soto
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      tags: [BFF - Reportes]
+      summary: Listar reportes
+      security: []
+      responses:
+        "200":
+          description: Lista de reportes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reporte"
+              example:
+                - id: 21
+                  tipo: FORESTAL
+                  descripcion: "[FORESTAL] Humo visible en quebrada"
+                  latitud: -33.456789
+                  longitud: -70.654321
+                  mediaUrl: /bff/reportes/media/evidencia.jpg
+                  intensidad: ALTA
+                  estado: ACTIVO
+                  fechaCreacion: "2026-06-27T14:00:00"
+                  ciudadanoId: "2"
+                  ciudadanoNombre: Ana Soto
+
+  /bff/reportes/{id}:
+    get:
+      tags: [BFF - Reportes]
+      summary: Obtener reporte por ID
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Reporte encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reporte"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [BFF - Reportes]
+      summary: Eliminar reporte
+      description: Requiere token ADMIN.
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Reporte eliminado.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /bff/reportes/{id}/estado:
+    patch:
+      tags: [BFF - Reportes]
+      summary: Actualizar estado de reporte
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstadoUpdateRequest"
+            example:
+              estado: ATENDIDO
+      responses:
+        "200":
+          description: Reporte actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reporte"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /bff/reportes/media:
+    post:
+      tags: [BFF - Reportes]
+      summary: Subir archivo multimedia para reporte
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Archivo guardado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mediaUrl:
+                    type: string
+              example:
+                mediaUrl: /bff/reportes/media/2bdc55b1-foto.jpg
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /bff/reportes/media/{nombre}:
+    get:
+      tags: [BFF - Reportes]
+      summary: Obtener archivo multimedia
+      security: []
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 2bdc55b1-foto.jpg
+      responses:
+        "200":
+          description: Archivo multimedia.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /bff/monitoreo/focos:
+    get:
+      tags: [BFF - Monitoreo]
+      summary: Listar focos activos
+      security: []
+      description: Protegido con Circuit Breaker. Si ms-monitoreo no responde, devuelve status CIRCUIT_OPEN.
+      responses:
+        "200":
+          description: Focos activos.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/FocoActivo"
+                  - $ref: "#/components/schemas/CircuitOpenResponse"
+              examples:
+                ok:
+                  value:
+                    - id: 5
+                      latitud: -33.45
+                      longitud: -70.65
+                      intensidad: ALTA
+                      estado: ACTIVO
+                      sector: Valle Norte
+                      fechaDeteccion: "2026-06-27T14:00:00"
+                      fechaActualizacion: "2026-06-27T14:00:00"
+                      brigadaAsignada: Brigada 1
+                circuitOpen:
+                  value:
+                    status: CIRCUIT_OPEN
+                    message: Servicio de monitoreo temporalmente no disponible. El sistema de reportes sigue operativo.
+                    focos: []
+    post:
+      tags: [BFF - Monitoreo]
+      summary: Registrar foco activo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FocoCreateRequest"
+            example:
+              latitud: -33.45
+              longitud: -70.65
+              intensidad: ALTA
+              sector: Valle Norte
+              brigadaAsignada: Sin asignar
+      responses:
+        "201":
+          description: Foco registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocoActivo"
+        "503":
+          description: Circuit Breaker abierto.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircuitOpenResponse"
+
+  /bff/monitoreo/focos/{id}:
+    patch:
+      tags: [BFF - Monitoreo]
+      summary: Actualizar foco activo
+      description: Requiere token ADMIN. Permite asignar brigada.
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FocoUpdateRequest"
+            example:
+              estado: CONTROLADO
+              intensidad: BAJA
+              brigadaAsignada: Brigada Norte
+      responses:
+        "200":
+          description: Foco actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocoActivo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          description: Circuit Breaker abierto.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircuitOpenResponse"
+
+  /api/auth/health:
+    get:
+      tags: [ms-usuarios]
+      summary: Health check de ms-usuarios
+      security: []
+      responses:
+        "200":
+          description: Servicio operativo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: UP
+                service: ms-usuarios
+
+  /api/auth/register:
+    post:
+      tags: [ms-usuarios]
+      summary: Registrar ciudadano directamente en ms-usuarios
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              nombre: Ana Soto
+              email: ana@test.cl
+              password: secreto1
+      responses:
+        "201":
+          description: Usuario registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/auth/login:
+    post:
+      tags: [ms-usuarios]
+      summary: Login directo en ms-usuarios
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: admin@valledelsol.cl
+              password: admin123
+      responses:
+        "200":
+          description: Login correcto.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/me:
+    get:
+      tags: [ms-usuarios]
+      summary: Obtener sesion actual directamente en ms-usuarios
+      responses:
+        "200":
+          description: Sesion valida.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usuario:
+                    $ref: "#/components/schemas/Usuario"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/logout:
+    post:
+      tags: [ms-usuarios]
+      summary: Cerrar sesion directamente en ms-usuarios
+      responses:
+        "204":
+          description: Sesion cerrada.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/usuarios:
+    get:
+      tags: [ms-usuarios]
+      summary: Listar usuarios directamente en ms-usuarios
+      description: Requiere token ADMIN.
+      responses:
+        "200":
+          description: Lista de usuarios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Usuario"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [ms-usuarios]
+      summary: Crear usuario administrativo directamente en ms-usuarios
+      description: Requiere token ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserCreateRequest"
+            example:
+              nombre: Brigada Norte
+              email: brigada@test.cl
+              password: brigada1
+              rol: BRIGADA
+      responses:
+        "201":
+          description: Usuario creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/notificaciones:
+    get:
+      tags: [ms-usuarios]
+      summary: Listar notificaciones pendientes
+      responses:
+        "200":
+          description: Notificaciones pendientes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notificacion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/notificaciones/{id}/leida:
+    patch:
+      tags: [ms-usuarios]
+      summary: Marcar notificacion como leida
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Notificacion marcada como leida.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/notificaciones/broadcast:
+    post:
+      tags: [ms-usuarios]
+      summary: Crear notificacion para todos los usuarios
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BroadcastRequest"
+            example:
+              titulo: Nuevo reporte de emergencia
+              mensaje: Se registro un reporte FORESTAL con intensidad ALTA.
+              url: /
+      responses:
+        "201":
+          description: Notificaciones creadas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creadas:
+                    type: integer
+              example:
+                creadas: 3
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/reportes/health:
+    get:
+      tags: [ms-reportes]
+      summary: Health check de ms-reportes
+      security: []
+      responses:
+        "200":
+          description: Servicio operativo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: UP
+                service: ms-reportes
+
+  /api/reportes:
+    post:
+      tags: [ms-reportes]
+      summary: Crear reporte directamente en ms-reportes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReporteCreateRequest"
+      responses:
+        "201":
+          description: Reporte creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reporte"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      tags: [ms-reportes]
+      summary: Listar reportes directamente en ms-reportes
+      security: []
+      responses:
+        "200":
+          description: Lista de reportes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reporte"
+
+  /api/reportes/{id}:
+    get:
+      tags: [ms-reportes]
+      summary: Obtener reporte por ID directamente en ms-reportes
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Reporte encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reporte"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [ms-reportes]
+      summary: Eliminar reporte directamente en ms-reportes
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Reporte eliminado.
+
+  /api/reportes/tipo/{tipo}:
+    get:
+      tags: [ms-reportes]
+      summary: Filtrar reportes por tipo
+      security: []
+      parameters:
+        - name: tipo
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TipoReporte"
+          example: FORESTAL
+      responses:
+        "200":
+          description: Reportes filtrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reporte"
+
+  /api/reportes/estado/{estado}:
+    get:
+      tags: [ms-reportes]
+      summary: Filtrar reportes por estado
+      security: []
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ACTIVO
+      responses:
+        "200":
+          description: Reportes filtrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reporte"
+
+  /api/reportes/{id}/estado:
+    patch:
+      tags: [ms-reportes]
+      summary: Actualizar estado de reporte directamente en ms-reportes
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstadoUpdateRequest"
+            example:
+              estado: ATENDIDO
+      responses:
+        "200":
+          description: Reporte actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reporte"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/reportes/media:
+    post:
+      tags: [ms-reportes]
+      summary: Subir archivo directamente a ms-reportes
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Archivo guardado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mediaUrl:
+                    type: string
+              example:
+                mediaUrl: /bff/reportes/media/2bdc55b1-foto.jpg
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/reportes/media/{nombre}:
+    get:
+      tags: [ms-reportes]
+      summary: Obtener archivo directamente desde ms-reportes
+      security: []
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 2bdc55b1-foto.jpg
+      responses:
+        "200":
+          description: Archivo multimedia.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/monitoreo/health:
+    get:
+      tags: [ms-monitoreo]
+      summary: Health check de ms-monitoreo
+      security: []
+      responses:
+        "200":
+          description: Servicio operativo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: UP
+                service: ms-monitoreo
+
+  /api/monitoreo/focos:
+    post:
+      tags: [ms-monitoreo]
+      summary: Registrar foco directamente en ms-monitoreo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FocoCreateRequest"
+            example:
+              latitud: -33.45
+              longitud: -70.65
+              intensidad: ALTA
+              sector: Valle Norte
+              brigadaAsignada: Brigada 1
+      responses:
+        "201":
+          description: Foco creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocoActivo"
+    get:
+      tags: [ms-monitoreo]
+      summary: Listar todos los focos
+      security: []
+      responses:
+        "200":
+          description: Lista de focos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FocoActivo"
+
+  /api/monitoreo/focos/activos:
+    get:
+      tags: [ms-monitoreo]
+      summary: Listar focos activos
+      security: []
+      responses:
+        "200":
+          description: Lista de focos activos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FocoActivo"
+
+  /api/monitoreo/focos/{id}:
+    get:
+      tags: [ms-monitoreo]
+      summary: Obtener foco por ID
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Foco encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocoActivo"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [ms-monitoreo]
+      summary: Actualizar foco directamente en ms-monitoreo
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FocoUpdateRequest"
+            example:
+              estado: CONTROLADO
+              intensidad: BAJA
+              brigadaAsignada: Brigada Norte
+      responses:
+        "200":
+          description: Foco actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocoActivo"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [ms-monitoreo]
+      summary: Eliminar foco directamente en ms-monitoreo
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Foco eliminado.
+
+  /api/monitoreo/focos/sector/{sector}:
+    get:
+      tags: [ms-monitoreo]
+      summary: Filtrar focos por sector
+      security: []
+      parameters:
+        - name: sector
+          in: path
+          required: true
+          schema:
+            type: string
+          example: Valle Norte
+      responses:
+        "200":
+          description: Focos filtrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FocoActivo"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: UUID
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      example: 1
+
+  responses:
+    BadRequest:
+      description: Solicitud invalida.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: La solicitud contiene datos invalidos.
+    Unauthorized:
+      description: Token ausente, invalido o credenciales incorrectas.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Debe enviar un token Bearer valido.
+    Forbidden:
+      description: Usuario sin permisos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Solo un administrador puede realizar esta accion.
+    NotFound:
+      description: Recurso no encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Recurso no encontrado.
+    Conflict:
+      description: Conflicto de datos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Ya existe un usuario registrado con ese correo.
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+
+    RegisterRequest:
+      type: object
+      required: [nombre, email, password]
+      properties:
+        nombre:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+
+    AdminUserCreateRequest:
+      type: object
+      required: [nombre, email, password, rol]
+      properties:
+        nombre:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        rol:
+          type: string
+          enum: [ADMIN, BRIGADA]
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          format: uuid
+        usuario:
+          $ref: "#/components/schemas/Usuario"
+
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        email:
+          type: string
+          format: email
+        rol:
+          type: string
+          enum: [ADMIN, BRIGADA, CIUDADANO]
+        creadoEn:
+          type: string
+          format: date-time
+
+    Notificacion:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        titulo:
+          type: string
+        mensaje:
+          type: string
+        url:
+          type: string
+        creadaEn:
+          type: string
+          format: date-time
+
+    BroadcastRequest:
+      type: object
+      required: [titulo, mensaje]
+      properties:
+        titulo:
+          type: string
+        mensaje:
+          type: string
+        url:
+          type: string
+          default: /
+
+    TipoReporte:
+      type: string
+      enum: [FORESTAL, URBANO, SIMULACRO]
+
+    Intensidad:
+      type: string
+      enum: [BAJA, MEDIA, ALTA, CRITICA]
+
+    ReporteCreateRequest:
+      type: object
+      required: [tipo, descripcion, latitud, longitud]
+      properties:
+        tipo:
+          $ref: "#/components/schemas/TipoReporte"
+        descripcion:
+          type: string
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+        mediaUrl:
+          type: string
+        intensidad:
+          $ref: "#/components/schemas/Intensidad"
+        sector:
+          type: string
+          description: Usado por el BFF para crear el foco automatico.
+        ciudadanoId:
+          type: string
+        ciudadanoNombre:
+          type: string
+
+    Reporte:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tipo:
+          $ref: "#/components/schemas/TipoReporte"
+        descripcion:
+          type: string
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+        mediaUrl:
+          type: string
+        intensidad:
+          $ref: "#/components/schemas/Intensidad"
+        estado:
+          type: string
+          example: ACTIVO
+        fechaCreacion:
+          type: string
+          format: date-time
+        ciudadanoId:
+          type: string
+        ciudadanoNombre:
+          type: string
+
+    EstadoUpdateRequest:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          example: ATENDIDO
+
+    FocoCreateRequest:
+      type: object
+      required: [latitud, longitud, intensidad, sector]
+      properties:
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+        intensidad:
+          $ref: "#/components/schemas/Intensidad"
+        sector:
+          type: string
+        brigadaAsignada:
+          type: string
+
+    FocoUpdateRequest:
+      type: object
+      properties:
+        estado:
+          type: string
+          enum: [ACTIVO, CONTROLADO, EXTINGUIDO]
+        intensidad:
+          $ref: "#/components/schemas/Intensidad"
+        brigadaAsignada:
+          type: string
+
+    FocoActivo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+        intensidad:
+          $ref: "#/components/schemas/Intensidad"
+        estado:
+          type: string
+          enum: [ACTIVO, CONTROLADO, EXTINGUIDO]
+        sector:
+          type: string
+        fechaDeteccion:
+          type: string
+          format: date-time
+        fechaActualizacion:
+          type: string
+          format: date-time
+        brigadaAsignada:
+          type: string
+
+    CircuitOpenResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: CIRCUIT_OPEN
+        message:
+          type: string
+        focos:
+          type: array
+          items:
+            $ref: "#/components/schemas/FocoActivo"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: UP
+        service:
+          type: string
+        version:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string

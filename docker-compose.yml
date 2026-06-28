@@ -1,0 +1,70 @@
+services:
+  ms-usuarios:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    command: mvn spring-boot:run
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./ms-usuarios:/app
+      - maven-cache:/root/.m2
+      - usuarios-data:/app/data
+
+  ms-reportes:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    command: mvn spring-boot:run
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./ms-reportes:/app
+      - maven-cache:/root/.m2
+      - reportes-uploads:/app/uploads/reportes
+
+  ms-monitoreo:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    command: mvn spring-boot:run
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./ms-monitoreo:/app
+      - maven-cache:/root/.m2
+
+  bff:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    command: mvn spring-boot:run
+    ports:
+      - "8080:8080"
+    environment:
+      SERVICES_REPORTES_URL: http://ms-reportes:8081
+      SERVICES_MONITOREO_URL: http://ms-monitoreo:8082
+      SERVICES_USUARIOS_URL: http://ms-usuarios:8083
+    volumes:
+      - ./bff:/app
+      - maven-cache:/root/.m2
+    depends_on:
+      - ms-reportes
+      - ms-monitoreo
+      - ms-usuarios
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_BFF_PROXY_TARGET: http://bff:8080
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    depends_on:
+      - bff
+
+volumes:
+  maven-cache:
+  frontend-node-modules:
+  usuarios-data:
+  reportes-uploads:

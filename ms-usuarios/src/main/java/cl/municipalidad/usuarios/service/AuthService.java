@@ -7,6 +7,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,7 +25,39 @@ public class AuthService {
         String nombre = textoRequerido(body.get("nombre"), "El nombre es obligatorio.");
         String email = normalizarEmail(body.get("email"));
         String password = textoRequerido(body.get("password"), "La contraseña es obligatoria.");
-        String rol = textoOpcional(body.get("rol"), "CIUDADANO").toUpperCase();
+
+        if (password.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 6 caracteres.");
+        }
+
+        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un usuario registrado con ese correo.");
+        }
+
+        Usuario usuario = new Usuario(nombre, email, passwordEncoder.encode(password), "CIUDADANO");
+        usuario.setTokenSesion(generarToken());
+        return respuestaAuth(usuarioRepository.save(usuario));
+    }
+
+    public List<Map<String, Object>> listarUsuarios(String authorizationHeader) {
+        exigirAdmin(authorizationHeader);
+        return usuarioRepository.findAllByOrderByCreadoEnDesc()
+                .stream()
+                .map(this::usuarioPublico)
+                .toList();
+    }
+
+    public Map<String, Object> crearUsuarioAdministrativo(Map<String, String> body, String authorizationHeader) {
+        exigirAdmin(authorizationHeader);
+
+        String nombre = textoRequerido(body.get("nombre"), "El nombre es obligatorio.");
+        String email = normalizarEmail(body.get("email"));
+        String password = textoRequerido(body.get("password"), "La contraseña es obligatoria.");
+        String rol = textoRequerido(body.get("rol"), "El rol es obligatorio.").toUpperCase();
+
+        if (!rol.equals("ADMIN") && !rol.equals("BRIGADA")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se pueden crear usuarios ADMIN o BRIGADA desde este panel.");
+        }
 
         if (password.length() < 6) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 6 caracteres.");
@@ -35,8 +68,7 @@ public class AuthService {
         }
 
         Usuario usuario = new Usuario(nombre, email, passwordEncoder.encode(password), rol);
-        usuario.setTokenSesion(generarToken());
-        return respuestaAuth(usuarioRepository.save(usuario));
+        return usuarioPublico(usuarioRepository.save(usuario));
     }
 
     public Map<String, Object> login(Map<String, String> body) {
@@ -82,6 +114,16 @@ public class AuthService {
                 "email", usuario.getEmail(),
                 "rol", usuario.getRol(),
                 "creadoEn", usuario.getCreadoEn());
+    }
+
+    private Usuario exigirAdmin(String authorizationHeader) {
+        String token = extraerToken(authorizationHeader);
+        Usuario usuario = usuarioRepository.findByTokenSesion(token)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión inválida o expirada."));
+        if (!"ADMIN".equals(usuario.getRol())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo un administrador puede realizar esta acción.");
+        }
+        return usuario;
     }
 
     private String extraerToken(String authorizationHeader) {

@@ -3,6 +3,8 @@ import AuthForm from './components/AuthForm'
 import ReporteForm from './components/ReporteForm'
 import ReportesList from './components/ReportesList'
 import MonitoreoMapa from './components/MonitoreoMapa'
+import AdminPanel from './components/AdminPanel'
+import NotificationCenter from './components/NotificationCenter'
 import { authService } from './services/api'
 
 export default function App() {
@@ -44,7 +46,7 @@ export default function App() {
 
   const handleAuth = (usuarioAutenticado) => {
     setUsuario(usuarioAutenticado)
-    setActiveTab('monitoreo')
+    setActiveTab(usuarioAutenticado.rol === 'ADMIN' ? 'admin' : 'monitoreo')
   }
 
   const handleLogout = async () => {
@@ -76,9 +78,11 @@ export default function App() {
           </div>
           <div className="session-user">
             <strong>{usuario.nombre}</strong>
+            <span>{usuario.rol}</span>
           </div>
         </div>
         <div className="nav-actions">
+          <NotificationCenter />
           <div className="nav-tabs">
             <button
               className={`nav-tab ${activeTab === 'reportar' ? 'active' : ''}`}
@@ -98,6 +102,14 @@ export default function App() {
             >
               📋 Historial
             </button>
+            {usuario.rol === 'ADMIN' && (
+              <button
+                className={`nav-tab ${activeTab === 'admin' ? 'active' : ''}`}
+                onClick={() => setActiveTab('admin')}
+              >
+                Usuarios
+              </button>
+            )}
             <button className="nav-tab" onClick={handleLogout}>
               Salir
             </button>
@@ -119,6 +131,10 @@ export default function App() {
 
         {activeTab === 'historial' && (
           <ReportesList refresh={refreshReportes} usuario={usuario} />
+        )}
+
+        {activeTab === 'admin' && usuario.rol === 'ADMIN' && (
+          <AdminPanel />
         )}
       </main>
     </div>

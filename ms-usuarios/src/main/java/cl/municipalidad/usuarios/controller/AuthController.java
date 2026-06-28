@@ -22,6 +22,17 @@ public class AuthController {
         return ResponseEntity.status(201).body(authService.registrar(body));
     }
 
+    @GetMapping("/usuarios")
+    public ResponseEntity<?> listarUsuarios(@RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
+        return ResponseEntity.ok(authService.listarUsuarios(authorizationHeader));
+    }
+
+    @PostMapping("/usuarios")
+    public ResponseEntity<?> crearUsuarioAdministrativo(@RequestBody Map<String, String> body,
+                                                       @RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
+        return ResponseEntity.status(201).body(authService.crearUsuarioAdministrativo(body, authorizationHeader));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         return ResponseEntity.ok(authService.login(body));

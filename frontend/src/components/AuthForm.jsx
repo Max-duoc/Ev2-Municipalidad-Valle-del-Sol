@@ -5,7 +5,6 @@ const initialForm = {
   nombre: '',
   email: '',
   password: '',
-  rol: 'CIUDADANO',
 }
 
 export default function AuthForm({ onAuth }) {
@@ -26,7 +25,11 @@ export default function AuthForm({ onAuth }) {
     try {
       const response = modo === 'login'
         ? await authService.login({ email: form.email, password: form.password })
-        : await authService.registrar(form)
+        : await authService.registrar({
+          nombre: form.nombre,
+          email: form.email,
+          password: form.password,
+        })
 
       localStorage.setItem('authToken', response.data.token)
       localStorage.setItem('authUser', JSON.stringify(response.data.usuario))
@@ -84,7 +87,7 @@ export default function AuthForm({ onAuth }) {
             <span className="auth-brand-mark">VS</span>
             <div>
               <h2>{modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</h2>
-              <p>Accede al sistema de gestión de emergencias.</p>
+              <p>{modo === 'login' ? 'Accede al sistema de gestión de emergencias.' : 'El registro público crea cuentas ciudadanas.'}</p>
             </div>
           </div>
 
@@ -126,13 +129,8 @@ export default function AuthForm({ onAuth }) {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="rol">Tipo de perfil</label>
-                    <select id="rol" name="rol" value={form.rol} onChange={handleChange}>
-                      <option value="CIUDADANO">Ciudadano</option>
-                      <option value="OPERADOR">Operador municipal</option>
-                      <option value="BRIGADA">Brigada</option>
-                    </select>
+                  <div className="alert alert-warning">
+                    Las cuentas de administrador y brigada solo pueden ser creadas por un administrador.
                   </div>
                 </>
               )}

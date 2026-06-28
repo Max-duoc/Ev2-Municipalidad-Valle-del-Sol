@@ -25,6 +25,27 @@ public class AuthController {
         return reenviarPost("/api/auth/register", body, null);
     }
 
+    @GetMapping("/usuarios")
+    public ResponseEntity<?> listarUsuarios(@RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
+        try {
+            Object resultado = usuariosClient.get()
+                    .uri("/api/auth/usuarios")
+                    .header(HttpHeaders.AUTHORIZATION, authorizationHeader == null ? "" : authorizationHeader)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
+            return ResponseEntity.ok(resultado);
+        } catch (WebClientResponseException ex) {
+            return respuestaError(ex);
+        }
+    }
+
+    @PostMapping("/usuarios")
+    public ResponseEntity<?> crearUsuarioAdministrativo(@RequestBody Map<String, String> body,
+                                                       @RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
+        return reenviarPost("/api/auth/usuarios", body, authorizationHeader);
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         return reenviarPost("/api/auth/login", body, null);
@@ -48,6 +69,39 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
         return reenviarPost("/api/auth/logout", Map.of(), authorizationHeader);
+    }
+
+    @GetMapping("/notificaciones")
+    public ResponseEntity<?> notificaciones(@RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
+        try {
+            Object resultado = usuariosClient.get()
+                    .uri("/api/notificaciones")
+                    .header(HttpHeaders.AUTHORIZATION, authorizationHeader == null ? "" : authorizationHeader)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
+            return ResponseEntity.ok(resultado);
+        } catch (WebClientResponseException ex) {
+            return respuestaError(ex);
+        }
+    }
+
+    @PatchMapping("/notificaciones/{id}/leida")
+    public ResponseEntity<?> marcarNotificacionLeida(@PathVariable Long id,
+                                                     @RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
+        try {
+            ResponseEntity<Object> resultado = usuariosClient.patch()
+                    .uri("/api/notificaciones/{id}/leida", id)
+                    .header(HttpHeaders.AUTHORIZATION, authorizationHeader == null ? "" : authorizationHeader)
+                    .retrieve()
+                    .toEntity(Object.class)
+                    .block();
+            return resultado == null
+                    ? ResponseEntity.noContent().build()
+                    : ResponseEntity.status(resultado.getStatusCode()).body(resultado.getBody());
+        } catch (WebClientResponseException ex) {
+            return respuestaError(ex);
+        }
     }
 
     private ResponseEntity<?> reenviarPost(String uri, Map<String, String> body, String authorizationHeader) {

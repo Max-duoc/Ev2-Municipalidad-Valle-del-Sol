@@ -1,41 +1,142 @@
-Puerto: `8080`
+# BFF - Backend For Frontend
 
-##Patrones implementados
+Servicio de entrada para el frontend. Orquesta llamadas hacia `ms-reportes`, `ms-monitoreo` y `ms-usuarios`, y expone una API unica bajo `/bff`.
 
-- Circuit Breaker — Reciliente en todos los endpoints de `ms-monitoreo`: si el servicio de mapas falla, los reportes siguen operativos
+## Puerto
 
-Requisitos previos
+`8080`
 
-- `ms-reportes` corriendo en puerto `8081`
-- `ms-monitoreo` corriendo en puerto `8082`
+## Responsabilidades
 
-Ejecutar
+- Reenviar autenticacion y administracion hacia `ms-usuarios`.
+- Crear, listar, actualizar y eliminar reportes en `ms-reportes`.
+- Registrar focos y consultar monitoreo en `ms-monitoreo`.
+- Crear un foco automatico cuando se registra un reporte.
+- Publicar notificaciones cuando ocurren eventos relevantes.
+- Aplicar Circuit Breaker sobre operaciones de monitoreo.
 
+## Requisitos
+
+Servicios esperados:
+
+| Servicio | URL local |
+| --- | --- |
+| `ms-reportes` | `http://localhost:8081` |
+| `ms-monitoreo` | `http://localhost:8082` |
+| `ms-usuarios` | `http://localhost:8083` |
+
+## Configuracion
+
+Archivo principal:
+
+```text
+src/main/resources/application.properties
+```
+
+Propiedades:
+
+```properties
+services.reportes.url=http://localhost:8081
+services.monitoreo.url=http://localhost:8082
+services.usuarios.url=http://localhost:8083
+```
+
+En Docker Compose se sobreescriben con variables de entorno equivalentes:
+
+```yaml
+SERVICES_REPORTES_URL: http://ms-reportes:8081
+SERVICES_MONITOREO_URL: http://ms-monitoreo:8082
+SERVICES_USUARIOS_URL: http://ms-usuarios:8083
+```
+
+## Ejecutar
+
+```bash
 mvn spring-boot:run
+```
 
-Endpoints
+Health check:
 
-| Método | URL                         | Servicio destino        |
-| ------ | --------------------------- | ----------------------- |
-| POST   | `/bff/reportes`             | ms-reportes             |
-| GET    | `/bff/reportes`             | ms-reportes             |
-| GET    | `/bff/reportes/{id}`        | ms-reportes             |
-| GET    | `/bff/monitoreo/focos`      | ms-monitoreo _(con CB)_ |
-| POST   | `/bff/monitoreo/focos`      | ms-monitoreo _(con CB)_ |
-| PATCH  | `/bff/monitoreo/focos/{id}` | ms-monitoreo _(con CB)_ |
-| GET    | `/bff/health`               | —                       |
+```bash
+curl http://localhost:8080/bff/health
+```
 
-Circuit Breaker
+## Endpoints principales
 
-Configurado en `application.properties`:
+### Autenticacion y usuarios
+
+| Metodo | URL | Descripcion |
+| --- | --- | --- |
+| `POST` | `/bff/auth/register` | Registro ciudadano |
+| `POST` | `/bff/auth/login` | Login |
+| `GET` | `/bff/auth/me` | Sesion actual |
+| `POST` | `/bff/auth/logout` | Cerrar sesion |
+| `GET` | `/bff/auth/usuarios` | Listar usuarios, requiere admin |
+| `POST` | `/bff/auth/usuarios` | Crear admin/brigada, requiere admin |
+| `GET` | `/bff/auth/notificaciones` | Notificaciones pendientes |
+| `PATCH` | `/bff/auth/notificaciones/{id}/leida` | Marcar notificacion leida |
+
+### Reportes
+
+| Metodo | URL | Descripcion |
+| --- | --- | --- |
+| `POST` | `/bff/reportes` | Crear reporte y foco automatico |
+| `GET` | `/bff/reportes` | Listar reportes |
+| `GET` | `/bff/reportes/{id}` | Obtener reporte |
+| `PATCH` | `/bff/reportes/{id}/estado` | Actualizar estado |
+| `DELETE` | `/bff/reportes/{id}` | Eliminar reporte, requiere admin |
+| `POST` | `/bff/reportes/media` | Subir imagen/video |
+| `GET` | `/bff/reportes/media/{nombre}` | Obtener archivo |
+
+### Monitoreo
+
+| Metodo | URL | Descripcion |
+| --- | --- | --- |
+| `GET` | `/bff/monitoreo/focos` | Focos activos, con Circuit Breaker |
+| `POST` | `/bff/monitoreo/focos` | Registrar foco, con Circuit Breaker |
+| `PATCH` | `/bff/monitoreo/focos/{id}` | Actualizar foco/asignar brigada, requiere admin |
+
+## Autorizacion
+
+Los endpoints administrativos requieren:
+
+```http
+Authorization: Bearer <token>
+```
+
+El token se obtiene desde `/bff/auth/login`.
+
+## Ejemplo
+
+```bash
+curl -X POST http://localhost:8080/bff/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@valledelsol.cl","password":"admin123"}'
+```
+
+```bash
+curl http://localhost:8080/bff/reportes
+```
+
+## Circuit Breaker
+
+Configurado para `ms-monitoreo`:
 
 - Ventana deslizante: 5 llamadas
 - Umbral de fallo: 50%
-- Tiempo en estado abierto: 10 segundos
-- Transición automática a half-open: activada
+- Espera en abierto: 10 segundos
+- Transicion automatica a half-open: activa
 
-Cuando el circuit está abierto, el BFF devuelve un fallback con `status: "CIRCUIT_OPEN"` en lugar de bloquear la plataforma.
+Si `ms-monitoreo` falla, el BFF responde con `status: "CIRCUIT_OPEN"` y mantiene operativas las funciones de reportes.
 
-Tests
+## Pruebas y cobertura
 
-mvn test
+```bash
+mvn clean verify
+```
+
+Reporte HTML:
+
+```text
+target/site/jacoco/index.html
+```

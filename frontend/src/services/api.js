@@ -24,11 +24,31 @@ export const authService = {
   logout: () => api.post('/auth/logout'),
 }
 
+export const adminService = {
+  listarUsuarios: () => api.get('/auth/usuarios'),
+  crearUsuario: (datos) => api.post('/auth/usuarios', datos),
+}
+
+export const notificacionesService = {
+  obtenerPendientes: () => api.get('/auth/notificaciones'),
+  marcarLeida: (id) => api.patch(`/auth/notificaciones/${id}/leida`),
+}
+
 // ── Módulo de Reportes ──────────────────────────
 export const reportesService = {
   crear: (datos) => api.post('/reportes', datos),
+  subirMedia: (archivo) => {
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    return api.post('/reportes/media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000,
+    })
+  },
   obtenerTodos: () => api.get('/reportes'),
   obtenerPorId: (id) => api.get(`/reportes/${id}`),
+  actualizarEstado: (id, estado) => api.patch(`/reportes/${id}/estado`, { estado }),
+  eliminar: (id) => api.delete(`/reportes/${id}`),
 }
 
 // ── Módulo de Monitoreo ─────────────────────────

@@ -16,6 +16,7 @@ export default function ReporteForm({ usuario, onReporteCreado }) {
     longitud: '',
     mediaUrl: '',
     archivoNombre: '',
+    archivo: null,
     intensidad: 'MEDIA',
     ciudadanoId: usuario?.id ? String(usuario.id) : '',
   })
@@ -34,7 +35,8 @@ export default function ReporteForm({ usuario, onReporteCreado }) {
     setForm((f) => ({
       ...f,
       archivoNombre: archivo ? archivo.name : '',
-      mediaUrl: archivo ? `archivo:${archivo.name}` : '',
+      archivo: archivo || null,
+      mediaUrl: '',
     }))
   }
 
@@ -157,16 +159,23 @@ export default function ReporteForm({ usuario, onReporteCreado }) {
     setLoading(true)
     setMensaje(null)
     try {
-      const { archivoNombre, ...datosReporte } = form
+      let mediaUrl = ''
+      if (form.archivo) {
+        const upload = await reportesService.subirMedia(form.archivo)
+        mediaUrl = upload.data.mediaUrl
+      }
+
+      const { archivoNombre, archivo, ...datosReporte } = form
       const res = await reportesService.crear({
         ...datosReporte,
+        mediaUrl,
         ciudadanoId: String(usuario.id),
         ciudadanoNombre: usuario.nombre,
         latitud: parseFloat(form.latitud),
         longitud: parseFloat(form.longitud),
       })
       setMensaje({ tipo: 'success', texto: `✅ Reporte #${res.data.id} creado exitosamente.` })
-      setForm((f) => ({ ...f, descripcion: '', mediaUrl: '', archivoNombre: '' }))
+      setForm((f) => ({ ...f, descripcion: '', mediaUrl: '', archivoNombre: '', archivo: null }))
       if (onReporteCreado) onReporteCreado(res.data)
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al enviar el reporte. Verifique que los servicios estén activos.'

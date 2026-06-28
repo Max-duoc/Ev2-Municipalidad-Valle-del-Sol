@@ -25,7 +25,14 @@ const INTENSIDAD_RADIO = {
   CRITICA: 1500,
 }
 
-const coordenadaKey = (item) => `${Number(item.latitud).toFixed(6)},${Number(item.longitud).toFixed(6)}`
+const RADIO_AGRUPACION_METROS = 350
+const INTERVALO_ACTUALIZACION_MS = 5000
+const PRIORIDAD_INTENSIDAD = {
+  BAJA: 1,
+  MEDIA: 2,
+  ALTA: 3,
+  CRITICA: 4,
+}
 
 const limpiarDescripcion = (descripcion = '') => descripcion.replace(/^\[[^\]]+\]\s*/, '')
 
@@ -33,26 +40,72 @@ const nombreReportante = (reporte) => (
   reporte.ciudadanoNombre || (reporte.ciudadanoId ? `Usuario #${reporte.ciudadanoId}` : 'Sin identificar')
 )
 
-const offsetCoordenada = ([lat, lng], index, total) => {
-  if (total <= 1) return [lat, lng]
-  const radio = 0.00022
-  const angulo = (Math.PI * 2 * index) / total - Math.PI / 2
-  return [lat + Math.sin(angulo) * radio, lng + Math.cos(angulo) * radio]
+const esVideo = (url = '') => /\.(mp4|webm|ogg|mov)$/i.test(url)
+
+const distanciaMetros = (a, b) => {
+  const radioTierra = 6371000
+  const lat1 = a[0] * Math.PI / 180
+  const lat2 = b[0] * Math.PI / 180
+  const deltaLat = (b[0] - a[0]) * Math.PI / 180
+  const deltaLng = (b[1] - a[1]) * Math.PI / 180
+  const haversine = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2
+
+  return radioTierra * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
 }
 
-const crearIconoReporte = (reporte, totalGrupo = 1) => L.divIcon({
+const intensidadPrincipal = (reportes) => reportes.reduce((principal, reporte) => {
+  const intensidad = reporte.intensidad || 'MEDIA'
+  return (PRIORIDAD_INTENSIDAD[intensidad] || 0) > (PRIORIDAD_INTENSIDAD[principal] || 0)
+    ? intensidad
+    : principal
+}, 'MEDIA')
+
+const crearGruposCercanos = (reportes) => reportes.reduce((grupos, reporte) => {
+  const posicion = [Number(reporte.latitud), Number(reporte.longitud)]
+  const grupoCercano = grupos.find((grupo) => distanciaMetros(grupo.centro, posicion) <= RADIO_AGRUPACION_METROS)
+
+  if (grupoCercano) {
+    grupoCercano.reportes.push(reporte)
+    const total = grupoCercano.reportes.length
+    grupoCercano.centro = [
+      ((grupoCercano.centro[0] * (total - 1)) + posicion[0]) / total,
+      ((grupoCercano.centro[1] * (total - 1)) + posicion[1]) / total,
+    ]
+    grupoCercano.intensidad = intensidadPrincipal(grupoCercano.reportes)
+    return grupos
+  }
+
+  grupos.push({
+    key: `foco-${reporte.id}`,
+    centro: posicion,
+    intensidad: reporte.intensidad || 'MEDIA',
+    reportes: [reporte],
+  })
+  return grupos
+}, [])
+
+const etiquetaFoco = (grupo) => {
+  const primero = grupo.reportes[0]
+  const extra = grupo.reportes.length > 1 ? ` +${grupo.reportes.length - 1}` : ''
+  return `${nombreReportante(primero)}${extra} · ${grupo.intensidad || 'MEDIA'}`
+}
+
+const crearIconoFoco = (grupo) => L.divIcon({
   className: 'report-marker-wrapper',
-  html: `<div class="report-marker" style="--marker-color: ${INTENSIDAD_COLOR[reporte.intensidad] || '#e94560'}">${totalGrupo > 1 ? totalGrupo : '!'}</div>`,
+  html: `<div class="report-marker" style="--marker-color: ${INTENSIDAD_COLOR[grupo.intensidad] || '#e94560'}">${grupo.reportes.length}</div>`,
   iconSize: [38, 38],
   iconAnchor: [19, 19],
 })
 
-const crearIconoBurbuja = (reporte, indice) => L.divIcon({
-  className: 'report-bubble-wrapper',
-  html: `<div class="report-bubble" style="--marker-color: ${INTENSIDAD_COLOR[reporte.intensidad] || '#e94560'}">${indice + 1}</div>`,
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
+const abrirUbicacionEnMapa = (reporte) => {
+  const confirmado = window.confirm('¿Quieres abrir esta ubicación en tu aplicación de mapas?')
+  if (!confirmado) return
+
+  const lat = Number(reporte.latitud)
+  const lng = Number(reporte.longitud)
+  window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank', 'noopener,noreferrer')
+}
 
 /**
  * Componente reutilizable: Mapa de monitoreo geográfico en tiempo real.
@@ -64,9 +117,7 @@ export default function MonitoreoMapa({ nuevosReportes }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null)
-  const [grupoExpandido, setGrupoExpandido] = useState(null)
-  const [reporteResumen, setReporteResumen] = useState(null)
-  const [reporteDetalle, setReporteDetalle] = useState(null)
+  const [grupoDetalle, setGrupoDetalle] = useState(null)
 
   const cargarFocos = async () => {
     try {
@@ -94,7 +145,7 @@ export default function MonitoreoMapa({ nuevosReportes }) {
 
   useEffect(() => {
     cargarFocos()
-    const interval = setInterval(cargarFocos, 30000) // refresh cada 30s
+    const interval = setInterval(cargarFocos, INTERVALO_ACTUALIZACION_MS)
     return () => clearInterval(interval)
   }, [])
 
@@ -106,21 +157,17 @@ export default function MonitoreoMapa({ nuevosReportes }) {
   const centro = [-33.45, -70.65]
   const focosCriticos = focos.filter(f => f.intensidad === 'CRITICA').length
   const reportesConUbicacion = reportes.filter((reporte) => Number.isFinite(Number(reporte.latitud)) && Number.isFinite(Number(reporte.longitud)))
-  const gruposReportes = Object.values(reportesConUbicacion.reduce((grupos, reporte) => {
-    const key = coordenadaKey(reporte)
-    grupos[key] = grupos[key] || { key, centro: [Number(reporte.latitud), Number(reporte.longitud)], reportes: [] }
-    grupos[key].reportes.push(reporte)
-    return grupos
-  }, {}))
+  const gruposReportes = crearGruposCercanos(reportesConUbicacion)
 
-  const seleccionarReporte = (reporte) => {
-    if (reporteResumen?.id === reporte.id) {
-      setReporteDetalle(reporte)
-      return
-    }
-    setReporteResumen(reporte)
-    setReporteDetalle(null)
-  }
+  useEffect(() => {
+    if (!grupoDetalle) return
+
+    const grupoActualizado = gruposReportes.find((grupo) => (
+      grupo.reportes.some((reporte) => grupoDetalle.reportes.some((actual) => actual.id === reporte.id))
+    ))
+
+    setGrupoDetalle(grupoActualizado || null)
+  }, [reportes])
 
   return (
     <section className="monitoring-card">
@@ -166,108 +213,96 @@ export default function MonitoreoMapa({ nuevosReportes }) {
                   }}
                 />
               ))}
-              {gruposReportes.map((grupo) => {
-                if (grupo.reportes.length > 1 && grupoExpandido !== grupo.key) {
-                  return (
-                    <Marker
-                      key={grupo.key}
-                      position={grupo.centro}
-                      icon={crearIconoReporte(grupo.reportes[0], grupo.reportes.length)}
-                      eventHandlers={{
-                        click: () => {
-                          setGrupoExpandido(grupo.key)
-                          setReporteResumen(null)
-                          setReporteDetalle(null)
-                        }
-                      }}
-                    >
-                      <Popup>
-                        <strong>{grupo.reportes.length} reportes en esta ubicación</strong><br />
-                        Toca el marcador para desplegarlos.
-                      </Popup>
-                    </Marker>
-                  )
-                }
-
-                return grupo.reportes.map((reporte, index) => (
-                  <Marker
-                    key={reporte.id}
-                    position={offsetCoordenada(grupo.centro, index, grupo.reportes.length)}
-                    icon={grupo.reportes.length > 1 ? crearIconoBurbuja(reporte, index) : crearIconoReporte(reporte)}
-                    eventHandlers={{
-                      click: () => seleccionarReporte(reporte)
-                    }}
-                  >
-                    <Popup>
-                      <strong>Reporte #{reporte.id}</strong><br />
-                      <strong>Reportante:</strong> {nombreReportante(reporte)}<br />
-                      <strong>Intensidad:</strong> {reporte.intensidad || 'MEDIA'}<br />
-                      <span>Toca nuevamente el marcador para ver detalles.</span>
-                    </Popup>
-                  </Marker>
-                ))
-              })}
+              {gruposReportes.map((grupo) => (
+                <Marker
+                  key={grupo.key}
+                  position={grupo.centro}
+                  icon={crearIconoFoco(grupo)}
+                  eventHandlers={{
+                    click: () => setGrupoDetalle(grupo)
+                  }}
+                >
+                  <Popup>
+                    <strong>{etiquetaFoco(grupo)}</strong><br />
+                    <span>{grupo.reportes.length === 1 ? '1 aviso en este foco' : `${grupo.reportes.length} avisos agrupados en este foco`}</span>
+                  </Popup>
+                </Marker>
+              ))}
             </MapContainer>
           </div>
         )}
       </div>
 
-      {reporteDetalle && (
+      {grupoDetalle && (
         <aside className="report-detail-panel">
           <div className="report-detail-header">
             <div>
-              <span className={`badge badge-${reporteDetalle.tipo?.toLowerCase()}`}>{reporteDetalle.tipo}</span>
-              <h3>Reporte #{reporteDetalle.id}</h3>
+              <span className="badge badge-intensidad">{grupoDetalle.intensidad}</span>
+              <h3>{etiquetaFoco(grupoDetalle)}</h3>
+              <p>{grupoDetalle.reportes.length === 1 ? '1 aviso asociado' : `${grupoDetalle.reportes.length} avisos asociados`}</p>
             </div>
-            <button type="button" className="detail-close" onClick={() => setReporteDetalle(null)}>Cerrar</button>
+            <button type="button" className="detail-close" onClick={() => setGrupoDetalle(null)}>Cerrar</button>
           </div>
 
-          <div className="detail-row">
-            <strong>Reportante</strong>
-            <span>{nombreReportante(reporteDetalle)}</span>
-          </div>
-          <div className="detail-row">
-            <strong>Intensidad</strong>
-            <span>{reporteDetalle.intensidad || 'MEDIA'}</span>
-          </div>
-          <div className="detail-row">
-            <strong>Descripción</strong>
-            <p>{limpiarDescripcion(reporteDetalle.descripcion)}</p>
-          </div>
-          <div className="detail-row">
-            <strong>Imagen o evidencia</strong>
-            {reporteDetalle.mediaUrl ? (
-              reporteDetalle.mediaUrl.startsWith('archivo:') ? (
-                <span>{reporteDetalle.mediaUrl.replace('archivo:', '')}</span>
-              ) : (
-                <img className="detail-media" src={reporteDetalle.mediaUrl} alt="Evidencia del reporte" />
-              )
-            ) : (
-              <span>Sin archivo adjunto</span>
-            )}
-          </div>
-          <div className="detail-static-map">
-            <MapContainer
-              key={`detail-map-${reporteDetalle.id}`}
-              center={[reporteDetalle.latitud, reporteDetalle.longitud]}
-              zoom={15}
-              dragging={false}
-              scrollWheelZoom={false}
-              doubleClickZoom={false}
-              zoomControl={false}
-              attributionControl={false}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={[reporteDetalle.latitud, reporteDetalle.longitud]} />
-            </MapContainer>
+          <div className="detail-report-list">
+            {grupoDetalle.reportes.map((reporte) => (
+              <article key={reporte.id} className="detail-report-card">
+                <div className="detail-report-title">
+                  <strong>{nombreReportante(reporte)}</strong>
+                  <span className="badge badge-intensidad">{reporte.intensidad || 'MEDIA'}</span>
+                </div>
+
+                <div className="detail-row">
+                  <strong>Descripción</strong>
+                  <p>{limpiarDescripcion(reporte.descripcion)}</p>
+                </div>
+                <div className="detail-row">
+                  <strong>Imagen o evidencia</strong>
+                  {reporte.mediaUrl ? (
+                    esVideo(reporte.mediaUrl) ? (
+                      <video className="detail-media" src={reporte.mediaUrl} controls />
+                    ) : (
+                      <img className="detail-media" src={reporte.mediaUrl} alt="Evidencia del aviso" />
+                    )
+                  ) : (
+                    <span>Sin archivo adjunto</span>
+                  )}
+                </div>
+                <div
+                  className="detail-static-map"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => abrirUbicacionEnMapa(reporte)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') abrirUbicacionEnMapa(reporte)
+                  }}
+                  title="Abrir ubicación en mapas"
+                >
+                  <MapContainer
+                    key={`detail-map-${reporte.id}`}
+                    center={[reporte.latitud, reporte.longitud]}
+                    zoom={15}
+                    dragging={false}
+                    scrollWheelZoom={false}
+                    doubleClickZoom={false}
+                    zoomControl={false}
+                    attributionControl={false}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[reporte.latitud, reporte.longitud]} />
+                  </MapContainer>
+                  <span className="detail-map-hint">Abrir ubicación</span>
+                </div>
+              </article>
+            ))}
           </div>
         </aside>
       )}
 
       <div className="monitoring-footer">
         <div className="monitoring-summary">
-          <strong>Reportes: {reportesConUbicacion.length}</strong>
+          <strong>Avisos: {reportesConUbicacion.length}</strong>
           <span>Focos activos: {focos.length}</span>
           {focosCriticos > 0 && (
             <span>{focosCriticos} crítico(s)</span>

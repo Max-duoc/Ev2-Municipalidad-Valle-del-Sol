@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BffControllerTest {
 
-    private final BffController bffController = new BffController(null, null);
+    private final BffController bffController = new BffController(null, null, null);
 
     @Test
     void fallbackFocosActivos_deberiaRetornarServiceUnavailable() {
@@ -44,6 +44,7 @@ class BffControllerTest {
         ResponseEntity<?> response = bffController.fallbackActualizarFoco(
                 5L,
                 Map.of("estado", "CONTROLADO"),
+                "Bearer token",
                 new RuntimeException("Timeout")
         );
 
